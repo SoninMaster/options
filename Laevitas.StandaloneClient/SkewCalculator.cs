@@ -10,25 +10,28 @@ public static class SkewCalculator
 {
     public static OptionSkewDailyData? CalculateDailyAverage(IReadOnlyList<OptionSkew5MinData> dayData, DateTime date)
     {
-        if (dayData.Count == 0) return null;
+        // Only average over bars that actually carry skew data. Empty bars (no tenors)
+        // have a null WeightedSum and are dropped, matching the source tool's behavior.
+        var valid = dayData.Where(x => x.WeightedSum.HasValue).ToList();
+        if (valid.Count == 0) return null;
 
         return new OptionSkewDailyData
         {
             Time = date.Date,
             Timestamp = new DateTimeOffset(date.Date, TimeSpan.Zero).ToUnixTimeMilliseconds(),
-            D1 = Avg(dayData, x => x.D1),
-            D7 = Avg(dayData, x => x.D7),
-            D14 = Avg(dayData, x => x.D14),
-            M1 = Avg(dayData, x => x.M1),
-            M2 = Avg(dayData, x => x.M2),
-            M3 = Avg(dayData, x => x.M3),
-            M6 = Avg(dayData, x => x.M6),
-            Y1 = Avg(dayData, x => x.Y1),
-            Price = Avg(dayData, x => x.Price),
-            WeightedSum = Avg(dayData, x => x.WeightedSum),
-            MinWieghted = dayData.Min(x => x.WeightedSum),
-            MaxWieghted = dayData.Max(x => x.WeightedSum),
-            TokenSymbol = dayData[0].TokenSymbol,
+            D1 = Avg(valid, x => x.D1),
+            D7 = Avg(valid, x => x.D7),
+            D14 = Avg(valid, x => x.D14),
+            M1 = Avg(valid, x => x.M1),
+            M2 = Avg(valid, x => x.M2),
+            M3 = Avg(valid, x => x.M3),
+            M6 = Avg(valid, x => x.M6),
+            Y1 = Avg(valid, x => x.Y1),
+            Price = Avg(valid, x => x.Price),
+            WeightedSum = Avg(valid, x => x.WeightedSum),
+            MinWieghted = valid.Min(x => x.WeightedSum),
+            MaxWieghted = valid.Max(x => x.WeightedSum),
+            TokenSymbol = valid[0].TokenSymbol,
         };
     }
 

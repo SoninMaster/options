@@ -30,11 +30,16 @@ public abstract class OptionSkewBase
 
 public class OptionSkew5MinData : OptionSkewBase
 {
+    // Bars with no skew tenors at all (e.g. an entry carrying only an unrelated tenor)
+    // are "empty" and must be excluded from the daily average rather than counted as 0,
+    // otherwise they drag the daily WeightedSum down and skew the Factor min/max window.
     public override decimal? WeightedSum =>
-        (D7.HasValue ? D7 * D7Weight : 0) +
-        (M1.HasValue ? M1 * M1Weight : 0) +
-        (M3.HasValue ? M3 * M3Weight : 0) +
-        (M6.HasValue ? M6 * M6Weight : 0);
+        (D7 is null && M1 is null && M3 is null && M6 is null)
+            ? null
+            : (D7.HasValue ? D7 * D7Weight : 0) +
+              (M1.HasValue ? M1 * M1Weight : 0) +
+              (M3.HasValue ? M3 * M3Weight : 0) +
+              (M6.HasValue ? M6 * M6Weight : 0);
 }
 
 public class OptionSkewDailyData : OptionSkewBase

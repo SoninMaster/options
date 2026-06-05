@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LaevitasWeb</RootNamespace>
+    <AssemblyName>LaevitasWeb</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.0" />
+  </ItemGroup>
+
+  <!-- Reuse the standalone client logic without its console entry point -->
+  <ItemGroup>
+    <Compile Include="../Laevitas.StandaloneClient/LaevitasClient.cs" />
+    <Compile Include="../Laevitas.StandaloneClient/SkewCalculator.cs" />
+    <Compile Include="../Laevitas.StandaloneClient/Models/ApiModels.cs" />
+    <Compile Include="../Laevitas.StandaloneClient/Models/OptionSkewData.cs" />
+  </ItemGroup>
+
+</Project>

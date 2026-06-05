@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laevitas Skew Explorer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #151b30;
+      --panel-2: #1c2440;
+      --line: #2a3358;
+      --text: #e8ecf7;
+      --muted: #93a0c4;
+      --accent: #6c8cff;
+      --accent-2: #41d6a3;
+      --danger: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #1b2547 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 28px 24px 8px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    header h1 { margin: 0; font-size: 1.6rem; letter-spacing: .3px; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: .95rem; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 16px 24px 60px; }
+    .card {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      align-items: end;
+    }
+    label { display: block; font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0e1428;
+      color: var(--text);
+      font-size: .95rem;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    .btn {
+      grid-column: 1 / -1;
+      justify-self: start;
+      padding: 12px 22px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(90deg, var(--accent), #8a6cff);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .05s ease, opacity .2s;
+    }
+    .btn:hover { opacity: .92; }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .hint { color: var(--muted); font-size: .82rem; margin-top: 10px; }
+    .status { margin: 18px 0 0; min-height: 22px; font-size: .92rem; }
+    .status.err { color: var(--danger); }
+    .status.ok { color: var(--accent-2); }
+    .grid { display: grid; gap: 18px; margin-top: 22px; }
+    canvas { max-width: 100%; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--panel-2); }
+    th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: .72rem; letter-spacing: .5px; }
+    .table-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pill { display:inline-block; padding: 2px 9px; border-radius: 999px; background:#0e1428; border:1px solid var(--line); color: var(--muted); font-size:.78rem; margin-left:6px;}
+    a { color: var(--accent); }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Laevitas Skew Explorer <span class="pill">options · skew · factor</span></h1>
+    <p>Fetches option-skew data from the Laevitas API and computes WeightedSum, Factor, SMA30 and EMA30. Web wrapper around the standalone .NET client.</p>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <form id="form">
+        <div>
+          <label for="apiKey">Laevitas API key</label>
+          <input id="apiKey" type="password" placeholder="paste your apiKey header value" autocomplete="off" />
+        </div>
+        <div>
+          <label for="token">Token</label>
+          <input id="token" type="text" value="BTC" />
+        </div>
+        <div>
+          <label for="start">Start date (UTC)</label>
+          <input id="start" type="date" />
+        </div>
+        <div>
+          <label for="end">End date (UTC)</label>
+          <input id="end" type="date" />
+        </div>
+        <button class="btn" id="submit" type="submit">Fetch &amp; compute</button>
+      </form>
+      <div class="hint">The API key is sent only to this server, used for the live request to Laevitas, and never stored. Max range: 120 days.</div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="grid">
+      <div class="card hidden" id="chartCard">
+        <canvas id="chart" height="110"></canvas>
+      </div>
+      <div class="card hidden" id="tableCard">
+        <div class="table-scroll">
+          <table id="table"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const today = new Date().toISOString().slice(0, 10);
+    const monthAgo = new Date(Date.now() - 29 * 864e5).toISOString().slice(0, 10);
+    $("start").value = monthAgo;
+    $("end").value = today;
+
+    let chart;
+
+    function setStatus(msg, kind) {
+      const el = $("status");
+      el.className = "status" + (kind ? " " + kind : "");
+      el.innerHTML = msg;
+    }
+
+    function fmt(v) {
+      return (v === null || v === undefined) ? "–" : Number(v).toFixed(4);
+    }
+
+    function renderTable(rows) {
+      const cols = [
+        ["Date", "date"], ["Token", "token"], ["Price", "price"],
+        ["WeightedSum", "weightedSum"], ["Factor", "factor"],
+        ["SMA30", "sma30"], ["EMA30", "ema30"],
+        ["Sc.Factor", "scaledFactor"], ["Sc.SMA30", "scaledSma30"], ["Sc.EMA30", "scaledEma30"],
+      ];
+      let html = "<thead><tr>" + cols.map(c => `<th>${c[0]}</th>`).join("") + "</tr></thead><tbody>";
+      for (const r of rows) {
+        html += "<tr>" + cols.map(c => {
+          const v = r[c[1]];
+          if (c[1] === "date" || c[1] === "token") return `<td>${v}</td>`;
+          return `<td>${fmt(v)}</td>`;
+        }).join("") + "</tr>";
+      }
+      html += "</tbody>";
+      $("table").innerHTML = html;
+      $("tableCard").classList.remove("hidden");
+    }
+
+    function renderChart(rows) {
+      const labels = rows.map(r => r.date);
+      const mk = (key) => rows.map(r => r[key]);
+      const ds = (label, key, color) => ({
+        label, data: mk(key), borderColor: color, backgroundColor: color,
+        tension: .25, pointRadius: 0, borderWidth: 2, spanGaps: true,
+      });
+      const data = {
+        labels,
+        datasets: [
+          ds("Factor", "factor", "#6c8cff"),
+          ds("SMA30", "sma30", "#41d6a3"),
+          ds("EMA30", "ema30", "#ffb454"),
+        ],
+      };
+      const opts = {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { labels: { color: "#e8ecf7" } } },
+        scales: {
+          x: { ticks: { color: "#93a0c4", maxTicksLimit: 12 }, grid: { color: "#22294a" } },
+          y: { ticks: { color: "#93a0c4" }, grid: { color: "#22294a" } },
+        },
+      };
+      if (chart) chart.destroy();
+      chart = new Chart($("chart"), { type: "line", data, options: opts });
+      $("chartCard").classList.remove("hidden");
+    }
+
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = {
+        apiKey: $("apiKey").value.trim(),
+        token: $("token").value.trim(),
+        start: $("start").value,
+        end: $("end").value,
+      };
+      if (!body.apiKey) { setStatus("Please enter your Laevitas API key.", "err"); return; }
+
+      $("submit").disabled = true;
+      setStatus('<span class="spinner"></span>Fetching from Laevitas… this can take a while for long ranges.');
+      try {
+        const res = await fetch("/api/skew", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok) { setStatus("Error: " + (json.error || res.status), "err"); return; }
+        if (!json.rows || json.rows.length === 0) {
+          setStatus("No data returned for this range / token.", "err"); return;
+        }
+        setStatus(`Loaded ${json.rows.length} daily rows for ${json.token} (${json.start} → ${json.end}).`, "ok");
+        renderChart(json.rows);
+        renderTable(json.rows);
+      } catch (err) {
+        setStatus("Request failed: " + err.message, "err");
+      } finally {
+        $("submit").disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

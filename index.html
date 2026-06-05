@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0f1a" />
+    <title>OPTIONS — hello world</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap"
+    />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        color: #e7ecf5;
+        background:
+          radial-gradient(60% 60% at 30% 30%, rgba(124, 92, 255, 0.30), transparent 60%),
+          radial-gradient(50% 50% at 75% 25%, rgba(34, 211, 238, 0.22), transparent 60%),
+          linear-gradient(180deg, #0a0e1a, #06090f);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 720px;
+        text-align: left;
+      }
+      .badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 6px 14px; border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.18); color: #a4adc2;
+        font-size: 13px; background: rgba(255,255,255,0.02);
+        margin-bottom: 22px;
+      }
+      .badge .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #4ade80; box-shadow: 0 0 12px #4ade80;
+      }
+      h1 {
+        font-size: clamp(2.4rem, 6vw, 4rem);
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+      .grad {
+        background: linear-gradient(120deg, #7c5cff, #22d3ee);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      p {
+        color: #a4adc2;
+        font-size: 18px;
+        margin-top: 18px;
+        line-height: 1.6;
+      }
+      code {
+        font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9em;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 1px 6px;
+        border-radius: 6px;
+        color: #e7ecf5;
+      }
+      footer {
+        margin-top: 36px;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 12px;
+        color: #7a8299;
+        letter-spacing: 0.04em;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="badge"><span class="dot"></span> OPTIONS · scaffold ready</div>
+      <h1>Hello, <span class="grad">world</span>.</h1>
+      <p>
+        Świeży projekt <code>OPTIONS</code> stoi na <code>srv1418200</code>.
+        To jest jego pierwsza statyczna strona — punkt startowy do dalszej rozbudowy.
+      </p>
+      <footer>git · main · initial commit</footer>
+    </main>
+  </body>
+</html>

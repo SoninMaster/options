@@ -35,25 +35,34 @@ app.MapPost("/api/skew", async (SkewRequest req, ILoggerFactory lf, Cancellation
 
     var token = string.IsNullOrWhiteSpace(req.Token) ? "BTC" : req.Token.Trim().ToUpperInvariant();
 
+    // Factor/SMA30/EMA30 are rolling 30-day metrics, so the requested range must be
+    // "warmed up" with prior history – otherwise the first rows are computed from a
+    // partial window and are meaningless. We fetch WarmupDays before `start`, compute
+    // the metrics over the full series, then return only the requested range.
+    // 60 days makes Factor + SMA30 exact and EMA30 well-converged.
+    var fetchStart = start.AddDays(-WarmupDays());
+
     var logger = lf.CreateLogger<LaevitasClient>();
     try
     {
         using var client = new LaevitasClient(apiKey, logger);
-        var daily = await client.FetchRangeAsync(start, end, token, cancellationToken: ct);
+        var daily = await client.FetchRangeAsync(fetchStart, end, token, cancellationToken: ct);
 
-        var rows = daily.Select(r => new SkewRow(
-            r.Time.ToString("yyyy-MM-dd"),
-            r.TokenSymbol,
-            r.Price,
-            r.WeightedSum,
-            r.Factor,
-            r.SMA30,
-            r.EMA30,
-            r.ScaledFactor,
-            r.ScaledSMA30,
-            r.ScaledEMA30)).ToList();
+        var rows = daily
+            .Where(r => r.Time.Date >= start.Date)
+            .Select(r => new SkewRow(
+                r.Time.ToString("yyyy-MM-dd"),
+                r.TokenSymbol,
+                r.Price,
+                r.WeightedSum,
+                r.Factor,
+                r.SMA30,
+                r.EMA30,
+                r.ScaledFactor,
+                r.ScaledSMA30,
+                r.ScaledEMA30)).ToList();
 
-        return Results.Ok(new { token, start = start.ToString("yyyy-MM-dd"), end = end.ToString("yyyy-MM-dd"), rows });
+        return Results.Ok(new { token, start = start.ToString("yyyy-MM-dd"), end = end.ToString("yyyy-MM-dd"), warmupDays = WarmupDays(), rows });
     }
     catch (Exception ex)
     {
@@ -65,6 +74,12 @@ app.MapPost("/api/skew", async (SkewRequest req, ILoggerFactory lf, Cancellation
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
+
+// Days of history fetched before the requested range to warm up the rolling metrics.
+static int WarmupDays()
+{
+    return int.TryParse(Environment.GetEnvironmentVariable("SKEW_WARMUP_DAYS"), out var d) && d >= 0 ? d : 60;
+}
 
 static bool TryParseDate(string? s, out DateTime date) =>
     DateTime.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);

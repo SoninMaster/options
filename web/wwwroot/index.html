@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Laevitas Skew Explorer</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
     :root {
       --bg: #0b1020;
@@ -84,6 +86,11 @@
     .status.ok { color: var(--accent-2); }
     .grid { display: grid; gap: 18px; margin-top: 22px; }
     canvas { max-width: 100%; }
+    .chart-box { position: relative; height: 460px; }
+    .chart-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .chart-hint { color: var(--muted); font-size: .8rem; }
+    .btn-3 { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: #0e1428; color: var(--text); font-size: .85rem; cursor: pointer; }
+    .btn-3:hover { border-color: var(--accent); }
     table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .85rem; }
     th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--panel-2); }
     /* Sticky header row while scrolling vertically */
@@ -135,7 +142,11 @@
 
     <div class="grid">
       <div class="card hidden" id="chartCard">
-        <canvas id="chart" height="110"></canvas>
+        <div class="chart-toolbar">
+          <span class="chart-hint">Scroll / pinch to zoom · drag to pan · click a legend item to toggle a series</span>
+          <button class="btn-3" id="resetZoom" type="button">Reset zoom</button>
+        </div>
+        <div class="chart-box"><canvas id="chart"></canvas></div>
       </div>
       <div class="card hidden" id="tableCard">
         <div class="table-scroll">
@@ -161,8 +172,10 @@
     }
 
     function fmt(v) {
-      return (v === null || v === undefined) ? "–" : Number(v).toFixed(4);
+      return (v === null || v === undefined) ? "–" : Number(v).toFixed(2);
     }
+
+    $("resetZoom").addEventListener("click", () => { if (chart) chart.resetZoom(); });
 
     function renderTable(rows) {
       const cols = [
@@ -186,26 +199,51 @@
 
     function renderChart(rows) {
       const labels = rows.map(r => r.date);
-      const mk = (key) => rows.map(r => r[key]);
-      const ds = (label, key, color) => ({
+      const mk = (key) => rows.map(r => (r[key] === null || r[key] === undefined) ? null : Number(r[key]));
+      const metric = (label, key, color, hidden) => ({
         label, data: mk(key), borderColor: color, backgroundColor: color,
-        tension: .25, pointRadius: 0, borderWidth: 2, spanGaps: true,
+        yAxisID: "y", tension: .25, pointRadius: 0, borderWidth: 1.6, spanGaps: true, hidden: !!hidden,
       });
       const data = {
         labels,
         datasets: [
-          ds("Factor", "factor", "#6c8cff"),
-          ds("SMA30", "sma30", "#41d6a3"),
-          ds("EMA30", "ema30", "#ffb454"),
+          // Raw Factor is very noisy (daily ±8), so it starts hidden — toggle it via the legend.
+          metric("Factor", "factor", "#6c8cff", true),
+          metric("SMA30", "sma30", "#41d6a3", false),
+          metric("EMA30", "ema30", "#ffb454", false),
+          {
+            label: "BTC price", data: mk("price"),
+            borderColor: "#e8ecf7", backgroundColor: "#e8ecf7",
+            yAxisID: "yPrice", tension: .25, pointRadius: 0, borderWidth: 1.4, spanGaps: true,
+          },
         ],
       };
       const opts = {
         responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
         interaction: { mode: "index", intersect: false },
-        plugins: { legend: { labels: { color: "#e8ecf7" } } },
+        plugins: {
+          legend: { labels: { color: "#e8ecf7", usePointStyle: true, pointStyle: "line" } },
+          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y === null ? "–" : c.parsed.y.toFixed(2)}` } },
+          zoom: {
+            pan: { enabled: true, mode: "x" },
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: false }, mode: "x" },
+            limits: { x: { minRange: 5 } },
+          },
+        },
         scales: {
-          x: { ticks: { color: "#93a0c4", maxTicksLimit: 12 }, grid: { color: "#22294a" } },
-          y: { ticks: { color: "#93a0c4" }, grid: { color: "#22294a" } },
+          x: { ticks: { color: "#93a0c4", maxTicksLimit: 12, autoSkip: true }, grid: { color: "#22294a" } },
+          y: {
+            position: "left", suggestedMin: -8, suggestedMax: 8,
+            title: { display: true, text: "Factor / SMA30 / EMA30", color: "#93a0c4" },
+            ticks: { color: "#93a0c4" }, grid: { color: "#22294a" },
+          },
+          yPrice: {
+            position: "right", title: { display: true, text: "BTC price (USD)", color: "#93a0c4" },
+            ticks: { color: "#93a0c4", callback: (v) => "$" + Number(v).toLocaleString("en-US") },
+            grid: { drawOnChartArea: false },
+          },
         },
       };
       if (chart) chart.destroy();

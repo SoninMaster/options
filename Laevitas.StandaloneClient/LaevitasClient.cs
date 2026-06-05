@@ -9,7 +9,7 @@ namespace Laevitas.StandaloneClient;
 
 /// <summary>
 /// Standalone client for the Laevitas options-skew API.
-/// No database dependency ñ caller decides what to do with the returned data
+/// No database dependency ù caller decides what to do with the returned data
 /// (save to file, DB, memory, etc.).
 /// </summary>
 public sealed class LaevitasClient : IDisposable
@@ -67,15 +67,16 @@ public sealed class LaevitasClient : IDisposable
     public async Task<IReadOnlyList<OptionSkew5MinData>> Fetch5MinDataForDayAsync(
         DateTime date,
         string tokenSymbol = "BTC",
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false)
     {
         var startDateStr = date.ToString("yyyy-MM-dd");
         var endDateStr = startDateStr;
 
         var skewTask = FetchPageWithRetryAsync<SkewApiResponse>(
-            string.Format(SkewUrlTemplate, tokenSymbol, startDateStr, endDateStr, 1), cancellationToken);
+            string.Format(SkewUrlTemplate, tokenSymbol, startDateStr, endDateStr, 1), cancellationToken, throwOnFailure);
         var indexTask = FetchPageWithRetryAsync<IndexApiResponse>(
-            string.Format(IndexUrlTemplate, tokenSymbol, startDateStr, endDateStr, 1), cancellationToken);
+            string.Format(IndexUrlTemplate, tokenSymbol, startDateStr, endDateStr, 1), cancellationToken, throwOnFailure);
 
         await Task.WhenAll(skewTask, indexTask);
 
@@ -97,9 +98,9 @@ public sealed class LaevitasClient : IDisposable
         for (int page = 2; page <= totalPages; page++)
         {
             var skewPageTask = FetchPageWithRetryAsync<SkewApiResponse>(
-                string.Format(SkewUrlTemplate, tokenSymbol, startDateStr, endDateStr, page), cancellationToken);
+                string.Format(SkewUrlTemplate, tokenSymbol, startDateStr, endDateStr, page), cancellationToken, throwOnFailure);
             var indexPageTask = FetchPageWithRetryAsync<IndexApiResponse>(
-                string.Format(IndexUrlTemplate, tokenSymbol, startDateStr, endDateStr, page), cancellationToken);
+                string.Format(IndexUrlTemplate, tokenSymbol, startDateStr, endDateStr, page), cancellationToken, throwOnFailure);
 
             await Task.WhenAll(skewPageTask, indexPageTask);
 
@@ -133,9 +134,10 @@ public sealed class LaevitasClient : IDisposable
     public async Task<(IReadOnlyList<OptionSkew5MinData> FiveMin, OptionSkewDailyData? Daily)> FetchDayWithAverageAsync(
         DateTime date,
         string tokenSymbol = "BTC",
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false)
     {
-        var fiveMin = await Fetch5MinDataForDayAsync(date, tokenSymbol, cancellationToken);
+        var fiveMin = await Fetch5MinDataForDayAsync(date, tokenSymbol, cancellationToken, throwOnFailure);
         var daily = SkewCalculator.CalculateDailyAverage(fiveMin, date);
         return (fiveMin, daily);
     }
@@ -272,7 +274,7 @@ public sealed class LaevitasClient : IDisposable
         return timestamps;
     }
 
-    private async Task<T?> FetchPageWithRetryAsync<T>(string url, CancellationToken cancellationToken)
+    private async Task<T?> FetchPageWithRetryAsync<T>(string url, CancellationToken cancellationToken, bool throwOnFailure = false)
     {
         int attempt = 0;
         int delay = 1000;
@@ -296,6 +298,7 @@ public sealed class LaevitasClient : IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Fetch {Url} failed after {Attempt} attempts.", url, attempt);
+                if (throwOnFailure) throw;
                 return default;
             }
         }

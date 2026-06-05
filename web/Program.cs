@@ -7,13 +7,18 @@ builder.Logging.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat =
 
 var app = builder.Build();
 
+// Server-side API key (injected via env var, e.g. LAEVITAS_API_KEY).
+// Requests may still override it, but it is no longer required from the client.
+var serverApiKey = Environment.GetEnvironmentVariable("LAEVITAS_API_KEY");
+
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapPost("/api/skew", async (SkewRequest req, ILoggerFactory lf, CancellationToken ct) =>
 {
-    if (string.IsNullOrWhiteSpace(req.ApiKey))
-        return Results.BadRequest(new { error = "API key is required." });
+    var apiKey = string.IsNullOrWhiteSpace(req.ApiKey) ? serverApiKey : req.ApiKey;
+    if (string.IsNullOrWhiteSpace(apiKey))
+        return Results.BadRequest(new { error = "Server API key is not configured." });
 
     if (!TryParseDate(req.Start, out var start))
         return Results.BadRequest(new { error = "Invalid start date (use yyyy-MM-dd)." });
@@ -33,7 +38,7 @@ app.MapPost("/api/skew", async (SkewRequest req, ILoggerFactory lf, Cancellation
     var logger = lf.CreateLogger<LaevitasClient>();
     try
     {
-        using var client = new LaevitasClient(req.ApiKey, logger);
+        using var client = new LaevitasClient(apiKey, logger);
         var daily = await client.FetchRangeAsync(start, end, token, cancellationToken: ct);
 
         var rows = daily.Select(r => new SkewRow(

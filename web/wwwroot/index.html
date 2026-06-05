@@ -102,10 +102,6 @@
     <div class="card">
       <form id="form">
         <div>
-          <label for="apiKey">Laevitas API key</label>
-          <input id="apiKey" type="password" placeholder="paste your apiKey header value" autocomplete="off" />
-        </div>
-        <div>
           <label for="token">Token</label>
           <input id="token" type="text" value="BTC" />
         </div>
@@ -119,7 +115,7 @@
         </div>
         <button class="btn" id="submit" type="submit">Fetch &amp; compute</button>
       </form>
-      <div class="hint">The API key is sent only to this server, used for the live request to Laevitas, and never stored. Max range: 120 days.</div>
+      <div class="hint">Connected to Laevitas with a preconfigured server-side key — just pick a token and date range. Max range: 120 days.</div>
       <div class="status" id="status"></div>
     </div>
 
@@ -206,12 +202,10 @@
     $("form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const body = {
-        apiKey: $("apiKey").value.trim(),
         token: $("token").value.trim(),
         start: $("start").value,
         end: $("end").value,
       };
-      if (!body.apiKey) { setStatus("Please enter your Laevitas API key.", "err"); return; }
 
       $("submit").disabled = true;
       setStatus('<span class="spinner"></span>Fetching from Laevitas… this can take a while for long ranges.');

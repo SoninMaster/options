@@ -155,7 +155,7 @@ public sealed class BackfillService
         {
             // strict: throws on a real HTTP failure, so an empty result genuinely means
             // "no data for this day" (safe to mark) rather than a failed fetch.
-            var (_, daily) = await client.FetchDayWithAverageAsync(day, token, ct, throwOnFailure: true);
+            var (_, daily) = await client.FetchDayWithAverageAsync(day, token, ct, throwOnFailure: true, fillMissing: false);
             if (daily is not null)
                 _store.Upsert(token, daily);
             else

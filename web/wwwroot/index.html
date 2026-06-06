@@ -180,8 +180,8 @@
     function renderTable(rows) {
       const cols = [
         ["Date", "date"], ["Token", "token"], ["Price", "price"],
-        ["WeightedSum", "weightedSum"], ["Factor", "factor"],
-        ["SMA30", "sma30"], ["EMA30", "ema30"],
+        ["Min", "minWeighted"], ["Max", "maxWeighted"], ["WeightedSum", "weightedSum"],
+        ["Factor", "factor"], ["SMA30", "sma30"], ["EMA30", "ema30"],
         ["Sc.Factor", "scaledFactor"], ["Sc.SMA30", "scaledSma30"], ["Sc.EMA30", "scaledEma30"],
       ];
       let html = "<thead><tr>" + cols.map(c => `<th>${c[0]}</th>`).join("") + "</tr></thead><tbody>";

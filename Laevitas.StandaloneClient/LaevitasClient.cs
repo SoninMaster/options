@@ -9,7 +9,7 @@ namespace Laevitas.StandaloneClient;
 
 /// <summary>
 /// Standalone client for the Laevitas options-skew API.
-/// No database dependency ù caller decides what to do with the returned data
+/// No database dependency ? caller decides what to do with the returned data
 /// (save to file, DB, memory, etc.).
 /// </summary>
 public sealed class LaevitasClient : IDisposable
@@ -68,7 +68,8 @@ public sealed class LaevitasClient : IDisposable
         DateTime date,
         string tokenSymbol = "BTC",
         CancellationToken cancellationToken = default,
-        bool throwOnFailure = false)
+        bool throwOnFailure = false,
+        bool fillMissing = true)
     {
         var startDateStr = date.ToString("yyyy-MM-dd");
         var endDateStr = startDateStr;
@@ -120,7 +121,12 @@ public sealed class LaevitasClient : IDisposable
             await Task.Delay(DelayMsBetweenPages, cancellationToken);
         }
 
-        var completeSkewItems = FillMissing5MinuteIntervals(allSkewItems, startDateStr);
+        // Filling missing 5-min bars (by duplicating the previous value) biases the daily
+        // average on incomplete days and pulls the Factor min/max window off the source
+        // tool's values. The daily-average path therefore disables it (fillMissing = false).
+        var completeSkewItems = fillMissing
+            ? FillMissing5MinuteIntervals(allSkewItems, startDateStr)
+            : allSkewItems.OrderBy(x => x.DateUnixMs).ToList();
         var result = new List<OptionSkew5MinData>(completeSkewItems.Count);
         foreach (var skewItem in completeSkewItems)
             result.Add(MapTo5MinData(skewItem, priceByTimestamp, tokenSymbol));
@@ -135,9 +141,10 @@ public sealed class LaevitasClient : IDisposable
         DateTime date,
         string tokenSymbol = "BTC",
         CancellationToken cancellationToken = default,
-        bool throwOnFailure = false)
+        bool throwOnFailure = false,
+        bool fillMissing = true)
     {
-        var fiveMin = await Fetch5MinDataForDayAsync(date, tokenSymbol, cancellationToken, throwOnFailure);
+        var fiveMin = await Fetch5MinDataForDayAsync(date, tokenSymbol, cancellationToken, throwOnFailure, fillMissing);
         var daily = SkewCalculator.CalculateDailyAverage(fiveMin, date);
         return (fiveMin, daily);
     }

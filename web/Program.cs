@@ -72,11 +72,16 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
 
+// The source panel displays the weighted sum and its daily extremes as "flip" (negated).
+static decimal? Neg(decimal? v) => v.HasValue ? -v.Value : null;
+
 static SkewRow ToRow(OptionSkewDailyData r) => new(
     r.Time.ToString("yyyy-MM-dd"),
     r.TokenSymbol,
     r.Price,
-    r.WeightedSum,
+    Neg(r.MaxWieghted),   // daily minimum of the (negated) weighted sum
+    Neg(r.MinWieghted),   // daily maximum of the (negated) weighted sum
+    Neg(r.WeightedSum),   // daily weighted sum, shown negative like the source
     r.Factor,
     r.SMA30,
     r.EMA30,
@@ -101,6 +106,8 @@ record SkewRow(
     string Date,
     string Token,
     decimal? Price,
+    decimal? MinWeighted,
+    decimal? MaxWeighted,
     decimal? WeightedSum,
     decimal? Factor,
     decimal? Sma30,
